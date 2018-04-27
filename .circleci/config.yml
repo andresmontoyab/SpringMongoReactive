@@ -41,7 +41,7 @@ jobs:
       - run:
           name: chmod permissions
           command: chmod +x ./gradlew
-          
+
       # run tests! and gen code coverage
       - run: ./gradlew clean test jacocoTestReport
 

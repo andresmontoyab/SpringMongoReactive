@@ -99,6 +99,10 @@ En la implementacion tradicional nuestra capa de servicio, usualmente retornaba 
 		                });
 
 
+## Refactor Data Mongo Model
+
+Debido a que Reactive Driver no soporta los DBRefs utilizados para nuestra BD mongo deberemos refactorizar el modelo de base de datos si queremos utilizar una aplicacion reactiva.
+
 
 
 ## Archivo Gradle

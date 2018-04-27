@@ -7,11 +7,14 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.ui.Model;
+import reactor.core.publisher.Flux;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -25,6 +28,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 public class IndexControllerTest {
 
+
+    WebTestClient webTestClient;
+
     @Mock
     RecipeService recipeService;
 
@@ -35,18 +41,25 @@ public class IndexControllerTest {
 
     @Before
     public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
-
-        controller = new IndexController(recipeService);
+        //MockitoAnnotations.initMocks(this);
+        webTestClient = WebTestClient.bindToController(controller).build();
+        //controller = new IndexController(recipeService);
     }
 
     @Test
     public void testMockMVC() throws Exception {
-        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+     //   MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
 
-        mockMvc.perform(get("/"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("index"));
+        when(recipeService.getRecipes()).thenReturn(Flux.empty());
+//
+//        mockMvc.perform(get("/"))
+//                .andExpect(status().isOk())
+//                .andExpect(view().name("index"));
+
+        webTestClient.get().uri("/")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody();
     }
 
     @Test
@@ -61,10 +74,10 @@ public class IndexControllerTest {
 
         recipes.add(recipe);
 
-        when(recipeService.getRecipes()).thenReturn(recipes);
 
-        ArgumentCaptor<Set<Recipe>> argumentCaptor = ArgumentCaptor.forClass(Set.class);
+        when(recipeService.getRecipes()).thenReturn(Flux.fromIterable(recipes));
 
+        ArgumentCaptor<List<Recipe>> argumentCaptor = ArgumentCaptor.forClass(List.class);
         //when
         String viewName = controller.getIndexPage(model);
 
@@ -73,7 +86,7 @@ public class IndexControllerTest {
         assertEquals("index", viewName);
         verify(recipeService, times(1)).getRecipes();
         verify(model, times(1)).addAttribute(eq("recipes"), argumentCaptor.capture());
-        Set<Recipe> setInController = argumentCaptor.getValue();
+        List<Recipe> setInController = argumentCaptor.getValue();
         assertEquals(2, setInController.size());
     }
 
