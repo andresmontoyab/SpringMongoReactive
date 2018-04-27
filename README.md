@@ -4,6 +4,12 @@ Como se menciono antes dentro de SpringFramework existen diferentes formas de tr
 
 Adicionalmente esta aplicacion esta construida con una conexion a BD mongo.
 
+## Spring Reactives Types
+
+	1. Mono is a publiusher with zero or one elements in data stream.
+
+	2. Flux is a publiser with zero or many elements in data stream.	
+
 ## Repositorios Reactivos
 
 Para poder utilizar los repositorios de Spring en el paradiga reactivo deberemos realizar una interface que exporte de la siguiente clase.
@@ -104,6 +110,112 @@ En la implementacion tradicional nuestra capa de servicio, usualmente retornaba 
 Debido a que Reactive Driver no soporta los DBRefs utilizados para nuestra BD mongo deberemos refactorizar el modelo de base de datos si queremos utilizar una aplicacion reactiva.
 
 
+## Spring WebFlux 
+
+The normal spring framework is blocking for this reason spring webflux was designed, spring staff created a new full stack inside of spring  called spring Webflux
+
+	1. @Controller / RequestMapping --> Router Functions
+	2. spring-webmvc 				--> spring-webflux
+	3. Servlet APi 					--> HTTP / Reactive Program.
+	4. Servlet container 			--> Tomcat, Jetty, Netty
+
+
+Es importante decir que en un proyecto Spring no podran convivir Spring MVC y Spring WebFlux, por ende deberemos elegir cual utilizar, esto lo hacemos añadiendo o eliminando la dependencia en nuestro archivo gradel.
+
+		1. Spring MVC: compile('org.springframework.boot:spring-boot-starter-web')
+
+		2. Spring WebFlux : compile('org.springframework.boot:spring-boot-starter-webflux')
+
+Si ejecutamos nuestro proyecto como WebFlux todo nuestro flujo estará orientado a hacer reactivo, por ende podremos hacer los siguiente refactos.
+
+		1. En nuestros controladores cuando retornemos nuestros objetos a thymeleaf, podrmeos quitar la sentencia block(), y retornar el Mono<> o el Flux<> sin ningun problema, asi nuestro thymeleaf tambien trabajará sobre tipos reactivos.
+
+		2. En algunas ocasiones se presentan fallos con los BindingResult por ende deberemos implementar la siguiente solucion.		
+
+
+## Router Functions
+
+Las router funciontions hace el simil de @Controller en WebFlux, a continuacion crearemos una.
+
+			@Configuration
+			public class routerFunction {
+
+			    @Bean
+			    RouterFunction<?> routes(RecipeService recipeService){
+			        return RouterFunctions.route(GET("/api/recipes"),					// url donde será consumida
+			                serverRequest -> ServerResponse								
+			                        .ok()												// la respuesta del server sea ok
+			                        .contentType(MediaType.APPLICATION_JSON)			// Retornará un tipo JSON
+			                        .body(recipeService.getRecipes(), Recipe.class));	// Retornárá un objeto de la clase Recipe.class 
+
+			    }
+			} 
+
+
+Adicionalmente a estas funciones tambien podremos hacerle sus pruebas unitarias.
+
+			public class RouterFunctionTest {
+
+			    WebTestClient webTestClient;
+
+			    @Mock
+			    RecipeService recipeService;
+
+			    @Before
+			    public void setUp() throws Exception {
+			        MockitoAnnotations.initMocks(this);
+
+			        routerFunction webConfig = new routerFunction();
+
+			        RouterFunction<?> routerFunction = webConfig.routes(recipeService);
+
+			        webTestClient = WebTestClient.bindToRouterFunction(routerFunction).build();
+			    }
+
+
+			    @Test
+			    public void testGetRecipes() throws Exception {
+
+			        when(recipeService.getRecipes()).thenReturn(Flux.just());
+
+			        webTestClient.get().uri("/api/recipes")
+			                .accept(MediaType.APPLICATION_JSON)
+			                .exchange()
+			                .expectStatus().isOk();
+			    }
+
+			    @Test
+			    public void testGetRecipesWithData() throws Exception {
+
+			        when(recipeService.getRecipes()).thenReturn(Flux.just(new Recipe(), new Recipe()));
+
+			        webTestClient.get().uri("/api/recipes")
+			                .accept(MediaType.APPLICATION_JSON)
+			                .exchange()
+			                .expectStatus().isOk()
+			                .expectBodyList(Recipe.class);
+			    }
+			}			
+
+## Manejo de Excepciones
+
+Anteriormente con Spring MVC podiamos utilizar la clase ModelAndView para el manejo de excepciones, sin embargo esta es especifica para Spring MVC con Spring WebFlux no nos servirá por ende, deberemos refactorizar nuevametne nuestras excepciones quedando de la siguiente manera.
+
+			@Slf4j
+			@ControllerAdvice
+			public class ControllerExceptionHandler {
+
+			    @ResponseStatus(HttpStatus.BAD_REQUEST)
+			    @ExceptionHandler(WebExchangeBindException.class)
+			    public String handleNumberFormat(Exception exception, Model model){
+
+			        log.error("Handling Binding Exception");
+			        log.error(exception.getMessage());
+
+			        model.addAttribute("exception", exception);
+			        return "400error";
+			    }
+			}
 
 ## Archivo Gradle
 
